@@ -286,8 +286,7 @@ export function AppProvider({ children }) {
     if (!supabase) throw new Error('Supabase غير مهيأ');
 
     const cleanPayload = {
-      ...payload,
-      updated_at: new Date().toISOString()
+      ...payload
     };
 
     const { data, error: saveError } = payload.id
@@ -316,12 +315,12 @@ export function AppProvider({ children }) {
   }, [supabase]);
 
   const saveMessageTypes = useCallback(async (nextTypes) => {
-    if (!supabase || !currentUser) throw new Error('لا يوجد مستخدم حالي');
+    if (!supabase) throw new Error('Supabase غير مهيأ');
     const { error: saveError } = await supabase.from('system_settings').upsert({
       setting_key: 'message_types',
       setting_value: nextTypes,
       description_ar: 'أنواع المراسلات',
-      updated_by: currentUser.id,
+      updated_by: currentUser?.id || null,
       updated_at: new Date().toISOString()
     }, { onConflict: 'setting_key' });
     if (saveError) throw saveError;
@@ -332,8 +331,7 @@ export function AppProvider({ children }) {
     if (!supabase) throw new Error('Supabase غير مهيأ');
 
     const cleanPayload = {
-      ...payload,
-      updated_at: new Date().toISOString()
+      ...payload
     };
 
     const { data, error: saveError } = payload.id
@@ -361,13 +359,30 @@ export function AppProvider({ children }) {
     return data;
   }, [supabase]);
 
+
+  const deleteOrgUnitType = useCallback(async (id) => {
+    if (!supabase) throw new Error('Supabase غير مهيأ');
+    const { error: deleteError } = await supabase.from('org_unit_types').delete().eq('id', id);
+    if (deleteError) throw deleteError;
+    setOrgUnitTypes((prev) => prev.filter((item) => item.id !== id));
+    return true;
+  }, [supabase]);
+
+  const deleteTaskType = useCallback(async (id) => {
+    if (!supabase) throw new Error('Supabase غير مهيأ');
+    const { error: deleteError } = await supabase.from('task_types').delete().eq('id', id);
+    if (deleteError) throw deleteError;
+    setTaskTypes((prev) => prev.filter((item) => item.id !== id));
+    return true;
+  }, [supabase]);
+
   const saveTaskTemplate = useCallback(async (taskTypeId, steps) => {
-    if (!supabase || !currentUser) throw new Error('لا يوجد مستخدم حالي');
+    if (!supabase) throw new Error('Supabase غير مهيأ');
     const { error: saveError } = await supabase.from('system_settings').upsert({
       setting_key: `task_template_${taskTypeId}`,
       setting_value: steps,
       description_ar: 'قالب مسار المهمة',
-      updated_by: currentUser.id,
+      updated_by: currentUser?.id || null,
       updated_at: new Date().toISOString()
     }, { onConflict: 'setting_key' });
     if (saveError) throw saveError;
@@ -679,7 +694,7 @@ export function AppProvider({ children }) {
     requestBrowserNotifications,
     manualBackupExport,
     createUserFromApp
-  }), [advanceTaskStep, branding, createThread, currentUser, error, fetchAll, loading, manualBackupExport, markNotificationRead, messageTypes, notifications, orgUnitTypes, orgUnits, replyToThread, saveBranding, saveMessageTypes, saveOrgUnit, saveOrgUnitType, saveTask, saveTaskTemplate, saveTaskType, saveUserProfile, session, signIn, signOut, taskTemplates, taskTypes, tasks, threads, users, requestBrowserNotifications, createUserFromApp]);
+  }), [advanceTaskStep, branding, createThread, currentUser, error, fetchAll, loading, manualBackupExport, markNotificationRead, messageTypes, notifications, orgUnitTypes, orgUnits, replyToThread, saveBranding, saveMessageTypes, saveOrgUnit, saveOrgUnitType, deleteOrgUnitType, saveTask, saveTaskTemplate, saveTaskType, deleteTaskType, saveUserProfile, session, signIn, signOut, taskTemplates, taskTypes, tasks, threads, users, requestBrowserNotifications, createUserFromApp]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

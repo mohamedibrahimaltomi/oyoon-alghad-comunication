@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, Building2, ClipboardList, DatabaseBackup, LayoutDashboard, LogOut, Mail, Menu, Moon, Settings, Sun, Users, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Bell, Building2, ClipboardList, DatabaseBackup, Download, LayoutDashboard, LogOut, Mail, Menu, Moon, Settings, Sun, Users, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useApp } from '../contexts/AppContext';
@@ -21,6 +22,8 @@ export default function Layout({ children }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [clock, setClock] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     const timer = setInterval(() => setClock(new Date()), 1000);
@@ -28,6 +31,26 @@ export default function Layout({ children }) {
   }, []);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.is_read).length, [notifications]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handler = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => null);
+    setInstallPrompt(null);
+  };
 
   return (
     <div className="app-shell">
@@ -72,6 +95,12 @@ export default function Layout({ children }) {
             <p>{formatDateTime(clock)} — {currentUser?.orgUnitName || 'بدون جهة إدارية'}</p>
           </div>
           <div className="topbar-actions">
+            {installPrompt ? (
+              <button className="secondary-btn install-btn" onClick={handleInstallApp} title="تثبيت التطبيق">
+                <Download size={16} />
+                <span>تثبيت</span>
+              </button>
+            ) : null}
             <button className="icon-btn" onClick={toggleTheme} title="تبديل الوضع">
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>

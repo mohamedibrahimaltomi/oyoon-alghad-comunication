@@ -38,26 +38,6 @@ export const defaultMessageTypes = [
   { value: 'document_request', label: 'طلب مستند', is_active: true }
 ];
 
-export const ADMIN_LEVEL_ORDER = [
-  'الإدارة العليا',
-  'إدارة',
-  'قسم',
-  'قسم فرعي',
-  'قطاع',
-  'خط',
-  'موظف'
-];
-
-export const ADMIN_PARENT_RULES = {
-  'الإدارة العليا': [],
-  'إدارة': ['الإدارة العليا'],
-  'قسم': ['إدارة'],
-  'قسم فرعي': ['قسم'],
-  'قطاع': ['قسم', 'قسم فرعي'],
-  'خط': ['قطاع'],
-  'موظف': ['إدارة', 'قسم', 'قسم فرعي', 'قطاع', 'خط']
-};
-
 export function formatDateTime(value) {
   if (!value) return '—';
   const date = typeof value === 'string' ? new Date(value) : value;
@@ -90,18 +70,6 @@ export function taskStatusLabel(statusKey) {
   return TASK_STATUS_LABELS[statusKey] || statusKey;
 }
 
-export function sortAdminTypes(types = []) {
-  return [...types].sort((a, b) => {
-    const ia = ADMIN_LEVEL_ORDER.indexOf(a.name_ar);
-    const ib = ADMIN_LEVEL_ORDER.indexOf(b.name_ar);
-    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib) || a.name_ar.localeCompare(b.name_ar, 'ar');
-  });
-}
-
-export function allowedParentTypeNames(typeName) {
-  return ADMIN_PARENT_RULES[typeName] || [];
-}
-
 export function buildOrgTree(units) {
   const map = new Map();
   units.forEach((unit) => map.set(unit.id, { ...unit, children: [] }));
@@ -114,7 +82,7 @@ export function buildOrgTree(units) {
     }
   });
   const sortRecursive = (nodes) => {
-    nodes.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name_ar.localeCompare(b.name_ar, 'ar'));
+    nodes.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name_ar.localeCompare(b.name_ar));
     nodes.forEach((child) => sortRecursive(child.children));
     return nodes;
   };
@@ -135,23 +103,4 @@ export function fileToDataUrl(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-
-export const LEVEL_PARENT_LABELS = {
-  'الإدارة العليا': 'لا يوجد مستوى أعلى',
-  'إدارة': 'الإدارة العليا',
-  'قسم': 'الإدارة التابعة',
-  'قسم فرعي': 'القسم الأعلى',
-  'قطاع': 'القسم أو القسم الفرعي الأعلى',
-  'خط': 'القطاع الأعلى',
-  'موظف': 'الجهة الإدارية التابعة'
-};
-
-export function parentFieldLabel(typeName) {
-  return LEVEL_PARENT_LABELS[typeName] || 'الجهة الأعلى';
-}
-
-export function typeFriendlyName(typeName) {
-  return typeName || 'المستوى الإداري';
 }

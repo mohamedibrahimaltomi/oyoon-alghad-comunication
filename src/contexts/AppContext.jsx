@@ -284,12 +284,36 @@ export function AppProvider({ children }) {
 
   const saveOrgUnitType = useCallback(async (payload) => {
     if (!supabase) throw new Error('Supabase غير مهيأ');
-    const { error: saveError } = payload.id
-      ? await supabase.from('org_unit_types').update(payload).eq('id', payload.id)
-      : await supabase.from('org_unit_types').insert(payload);
+
+    const cleanPayload = {
+      ...payload,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error: saveError } = payload.id
+      ? await supabase
+        .from('org_unit_types')
+        .update(cleanPayload)
+        .eq('id', payload.id)
+        .select()
+        .single()
+      : await supabase
+        .from('org_unit_types')
+        .insert(cleanPayload)
+        .select()
+        .single();
+
     if (saveError) throw saveError;
-    await fetchAll(session?.user?.id);
-  }, [fetchAll, session?.user?.id]);
+
+    setOrgUnitTypes((prev) => {
+      if (payload.id) {
+        return prev.map((item) => (item.id === payload.id ? data : item));
+      }
+      return [...prev, data];
+    });
+
+    return data;
+  }, [supabase]);
 
   const saveMessageTypes = useCallback(async (nextTypes) => {
     if (!supabase || !currentUser) throw new Error('لا يوجد مستخدم حالي');
@@ -306,12 +330,36 @@ export function AppProvider({ children }) {
 
   const saveTaskType = useCallback(async (payload) => {
     if (!supabase) throw new Error('Supabase غير مهيأ');
-    const { error: saveError } = payload.id
-      ? await supabase.from('task_types').update(payload).eq('id', payload.id)
-      : await supabase.from('task_types').insert(payload);
+
+    const cleanPayload = {
+      ...payload,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error: saveError } = payload.id
+      ? await supabase
+        .from('task_types')
+        .update(cleanPayload)
+        .eq('id', payload.id)
+        .select()
+        .single()
+      : await supabase
+        .from('task_types')
+        .insert(cleanPayload)
+        .select()
+        .single();
+
     if (saveError) throw saveError;
-    await fetchAll(session?.user?.id);
-  }, [fetchAll, session?.user?.id]);
+
+    setTaskTypes((prev) => {
+      if (payload.id) {
+        return prev.map((item) => (item.id === payload.id ? data : item));
+      }
+      return [...prev, data];
+    });
+
+    return data;
+  }, [supabase]);
 
   const saveTaskTemplate = useCallback(async (taskTypeId, steps) => {
     if (!supabase || !currentUser) throw new Error('لا يوجد مستخدم حالي');
@@ -327,7 +375,7 @@ export function AppProvider({ children }) {
   }, [currentUser]);
 
   const createUserFromApp = useCallback(async (payload) => {
-    if (!createUserFunctionUrl) throw new Error('إضافة المستخدم من داخل التطبيق تحتاج ربط وظيفة create-user أولًا في ملف .env');
+    if (!createUserFunctionUrl) throw new Error('أضف رابط وظيفة إنشاء المستخدم في ملف .env داخل المتغير VITE_CREATE_USER_FUNCTION_URL');
     const response = await fetch(createUserFunctionUrl, {
       method: 'POST',
       headers: {

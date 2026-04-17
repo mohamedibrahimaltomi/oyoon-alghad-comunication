@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import Card from '../components/Card';
 import { useApp } from '../contexts/AppContext';
-import { ADMIN_LEVEL_ORDER, allowedParentTypeNames, sortAdminTypes, parentFieldLabel } from '../lib/helpers';
+import { flattenUnits } from '../lib/helpers';
 
 const emptyForm = {
   id: '',
@@ -16,27 +16,12 @@ const emptyForm = {
 };
 
 export default function StructurePage() {
-  const { orgUnits, orgUnitTypes, saveOrgUnit } = useApp();
+  const { orgUnits, orgUnitTypes, orgTree, saveOrgUnit } = useApp();
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const sortedTypes = useMemo(() => sortAdminTypes(orgUnitTypes), [orgUnitTypes]);
-  const selectedType = useMemo(() => sortedTypes.find((type) => type.id === form.type_id), [sortedTypes, form.type_id]);
-  const parentLabel = useMemo(() => parentFieldLabel(selectedType?.name_ar), [selectedType]);
-  const allowedParents = useMemo(() => {
-    const allowedTypeNames = allowedParentTypeNames(selectedType?.name_ar);
-    if (!selectedType) return [];
-    if (!allowedTypeNames.length) return [];
-    return orgUnits.filter((unit) => {
-      const unitType = orgUnitTypes.find((type) => type.id === unit.type_id);
-      return unitType && allowedTypeNames.includes(unitType.name_ar);
-    }).sort((a, b) => {
-      const ta = orgUnitTypes.find((type) => type.id === a.type_id)?.name_ar || '';
-      const tb = orgUnitTypes.find((type) => type.id === b.type_id)?.name_ar || '';
-      return ADMIN_LEVEL_ORDER.indexOf(ta) - ADMIN_LEVEL_ORDER.indexOf(tb) || a.name_ar.localeCompare(b.name_ar, 'ar');
-    });
-  }, [form.type_id, orgUnitTypes, orgUnits, selectedType]);
+  const options = useMemo(() => flattenUnits(orgTree), [orgTree]);
 
   const onEdit = (unit) => {
     setForm({
@@ -50,11 +35,7 @@ export default function StructurePage() {
       is_active: unit.is_active,
       sort_order: unit.sort_order || 0
     });
-    setMessage('يمكنك تعديل هذا المستوى الإداري ثم حفظه.');
-  };
-
-  const onTypeChange = (nextTypeId) => {
-    setForm((prev) => ({ ...prev, type_id: nextTypeId, parent_id: '' }));
+    setMessage('يمكنك تعديل الجهة الإدارية الحالية ثم حفظها.');
   };
 
   const onSubmit = async (event) => {
@@ -63,10 +44,10 @@ export default function StructurePage() {
     setMessage('');
     try {
       await saveOrgUnit(form);
-      setMessage('تم حفظ المستوى الإداري بنجاح.');
+      setMessage('تم حفظ الجهة الإدارية بنجاح.');
       setForm(emptyForm);
     } catch (err) {
-      setMessage(err.message || 'تعذر حفظ المستوى الإداري.');
+      setMessage(err.message || 'تعذر حفظ الجهة الإدارية.');
     } finally {
       setBusy(false);
     }
@@ -75,31 +56,23 @@ export default function StructurePage() {
   return (
     <div className="page-stack">
       <div className="grid-2 responsive-stack">
-        <Card title="إعداد الهيكل الإداري" subtitle="مثال: عند إضافة قسم سيعرض لك الإدارات فقط، وعند إضافة قسم فرعي سيعرض الأقسام فقط">
+        <Card title="إعداد التسلسل الإداري" subtitle="حدد الإدارة أو القسم وحدد الجهة الأعلى منه ليفهم النظام التبعية داخليًا">
           <form className="form-grid" onSubmit={onSubmit}>
-            <label>{selectedType?.name_ar ? `اسم ${selectedType.name_ar}` : 'اسم الجهة'}
-              <input placeholder={selectedType?.name_ar ? `مثال: ${selectedType.name_ar} جديد` : 'اكتب الاسم هنا'} value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required />
-            </label>
+            <label>اسم الإدارة / القسم<input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required /></label>
             <label>المستوى الإداري
-              <select value={form.type_id} onChange={(e) => onTypeChange(e.target.value)} required>
-                <option value="">اختر المستوى الإداري</option>
-                {sortedTypes.map((type) => <option key={type.id} value={type.id}>{type.name_ar}</option>)}
+              <select value={form.type_id} onChange={(e) => setForm({ ...form, type_id: e.target.value })} required>
+                <option value="">اختر المستوى</option>
+                {orgUnitTypes.map((type) => <option key={type.id} value={type.id}>{type.name_ar}</option>)}
               </select>
             </label>
-            <label>{parentLabel}
-              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })} disabled={!selectedType || !allowedParents.length}>
-                <option value="">{!selectedType ? 'اختر المستوى أولًا' : !allowedParents.length ? 'لا يحتاج ربطًا بمستوى أعلى' : `اختر ${parentLabel}`}</option>
-                {allowedParents.map((unit) => (
-                  <option key={unit.id} value={unit.id}>{unit.name_ar}</option>
-                ))}
+            <label>يتبع إلى
+              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })}>
+                <option value="">مستوى أعلى / مستقل</option>
+                {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
             </label>
-            <label>الترتيب
-              <input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />
-            </label>
-            <label>وصف مختصر
-              <textarea value={form.description_ar} onChange={(e) => setForm({ ...form, description_ar: e.target.value })} rows="3" />
-            </label>
+            <label>الترتيب<input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} /></label>
+            <label>وصف مختصر<textarea value={form.description_ar} onChange={(e) => setForm({ ...form, description_ar: e.target.value })} rows="3" /></label>
             <div className="check-row">
               <label><input type="checkbox" checked={form.receives_tasks} onChange={(e) => setForm({ ...form, receives_tasks: e.target.checked })} /> يستقبل مهام</label>
               <label><input type="checkbox" checked={form.receives_messages} onChange={(e) => setForm({ ...form, receives_messages: e.target.checked })} /> يستقبل مراسلات</label>
@@ -107,18 +80,18 @@ export default function StructurePage() {
             </div>
             {message ? <div className="alert">{message}</div> : null}
             <div className="button-row">
-              <button className="primary-btn" disabled={busy}>{busy ? 'جارٍ الحفظ...' : 'حفظ'}</button>
-              <button type="button" className="secondary-btn" onClick={() => { setForm(emptyForm); setMessage(''); }}>جديد</button>
+              <button className="primary-btn" disabled={busy}>{busy ? 'جارٍ الحفظ...' : 'حفظ الجهة الإدارية'}</button>
+              <button type="button" className="secondary-btn" onClick={() => { setForm(emptyForm); setMessage(''); }}>تفريغ النموذج</button>
             </div>
           </form>
         </Card>
 
-        <Card title="المستويات الحالية" subtitle={`إجمالي العناصر الإدارية: ${orgUnits.length}`}>
+        <Card title="الترتيب الإداري الحالي" subtitle={`عدد الجهات الحالية: ${orgUnits.length}`}>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>الاسم</th>
+                  <th>الجهة</th>
                   <th>المستوى</th>
                   <th>يتبع إلى</th>
                   <th>الحالة</th>
@@ -126,14 +99,7 @@ export default function StructurePage() {
                 </tr>
               </thead>
               <tbody>
-                {orgUnits
-                  .slice()
-                  .sort((a, b) => {
-                    const ta = orgUnitTypes.find((type) => type.id === a.type_id)?.name_ar || '';
-                    const tb = orgUnitTypes.find((type) => type.id === b.type_id)?.name_ar || '';
-                    return ADMIN_LEVEL_ORDER.indexOf(ta) - ADMIN_LEVEL_ORDER.indexOf(tb) || (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name_ar.localeCompare(b.name_ar, 'ar');
-                  })
-                  .map((unit) => (
+                {orgUnits.map((unit) => (
                   <tr key={unit.id}>
                     <td>{unit.name_ar}</td>
                     <td>{orgUnitTypes.find((type) => type.id === unit.type_id)?.name_ar || '—'}</td>

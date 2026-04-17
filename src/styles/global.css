@@ -163,22 +163,3 @@ th { color: var(--muted); font-weight:600; }
   .table-wrap table { min-width: 560px; }
   .span-2, .span-4 { grid-column: span 1; }
 }
-
-.simple-setting-item { display: grid; gap: 10px; }
-.simple-setting-item .secondary-btn.small { justify-self: flex-start; }
-@media (max-width: 1100px) {
-  .topbar { padding-top: 56px; }
-  .messages-layout { grid-template-columns: 1fr; }
-  .chat-thread { max-height: none; }
-}
-@media (max-width: 768px) {
-  .app-shell { padding: 12px; gap: 12px; }
-  .content-area { gap: 12px; }
-  .topbar { padding: 56px 14px 14px; }
-  .section-card { padding: 14px; }
-  .notification-panel { left: 0; right: auto; width: min(94vw, 340px); }
-  .reply-row { grid-template-columns: 1fr; }
-  .chat-item, .task-card, .list-row { gap: 8px; }
-  .button-row { align-items: stretch; }
-  .button-row .primary-btn, .button-row .secondary-btn { justify-content: center; }
-}

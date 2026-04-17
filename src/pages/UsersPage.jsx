@@ -1,13 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import Card from '../components/Card';
 import { useApp } from '../contexts/AppContext';
-import { ROLE_OPTIONS, roleLabel, ADMIN_LEVEL_ORDER } from '../lib/helpers';
+import { ROLE_OPTIONS, roleLabel } from '../lib/helpers';
 
 const emptyForm = { id: '', full_name_ar: '', username: '', email: '', phone: '', password: '', role_key: 'employee', org_unit_id: '', job_title_ar: '', is_active: true };
 
 export default function UsersPage() {
   const { users, orgUnits, saveUserProfile } = useApp();
-  const sortedOrgUnits = useMemo(() => orgUnits.slice().sort((a, b) => (ADMIN_LEVEL_ORDER.indexOf(a.level_type || a.type_name || '') - ADMIN_LEVEL_ORDER.indexOf(b.level_type || b.type_name || '')) || a.name_ar.localeCompare(b.name_ar, 'ar')), [orgUnits]);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,7 +47,6 @@ export default function UsersPage() {
       <div className="grid-2 responsive-stack">
         <Card title="إدارة المستخدمين" subtitle="إضافة مستخدم جديد أو تعديل المستخدمين الحاليين من داخل النظام">
           <form className="form-grid" onSubmit={onSubmit}>
-            <div className="alert">إذا ظهر لك خطأ عند إنشاء مستخدم جديد، تأكد لاحقًا من ربط وظيفة create-user مع Supabase. أما تعديل المستخدمين الحاليين فيعمل من هنا مباشرة.</div>
             <label>الاسم الكامل<input value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required /></label>
             <label>اسم المستخدم<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></label>
             <label>البريد الإلكتروني<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required={!form.id} /></label>
@@ -62,7 +60,7 @@ export default function UsersPage() {
             <label>الجهة الإدارية التابعة
               <select value={form.org_unit_id} onChange={(e) => setForm({ ...form, org_unit_id: e.target.value })}>
                 <option value="">اختر الإدارة أو القسم</option>
-                {sortedOrgUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar}</option>)}
+                {orgUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar}</option>)}
               </select>
             </label>
             <label>المسمى الوظيفي<input value={form.job_title_ar} onChange={(e) => setForm({ ...form, job_title_ar: e.target.value })} /></label>

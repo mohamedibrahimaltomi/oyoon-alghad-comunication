@@ -35,6 +35,12 @@ export default function SettingsPage() {
     [localMessageTypes]
   );
 
+  const summaryCounts = useMemo(() => ({
+    messages: localMessageTypes.filter((item) => item.label?.trim()).length,
+    levels: localOrgTypes.filter((item) => item.name_ar?.trim()).length,
+    tasks: localTaskTypes.filter((item) => item.name_ar?.trim()).length
+  }), [localMessageTypes, localOrgTypes, localTaskTypes]);
+
   const onLogoChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -141,8 +147,18 @@ export default function SettingsPage() {
         </form>
       </Card>
 
+
+      <div className="settings-summary-grid">
+        <div className="settings-summary-card card"><strong>{summaryCounts.messages}</strong><span>نوع مراسلة جاهز</span></div>
+        <div className="settings-summary-card card"><strong>{summaryCounts.levels}</strong><span>مستوى إداري</span></div>
+        <div className="settings-summary-card card"><strong>{summaryCounts.tasks}</strong><span>نوع مهمة</span></div>
+      </div>
+
+      <div className="settings-section-title">إدارة القوائم المرجعية</div>
+      <div className="settings-section-subtitle">اختر الاسم المناسب فقط، ويمكنك التعديل مباشرة ثم الحفظ من نفس الصفحة.</div>
+
       <div className="grid-2 responsive-stack">
-        <Card title="أنواع المراسلات" subtitle="أضف أو عدّل أنواع المراسلات بسهولة">
+        <Card title="أنواع المراسلات" subtitle="للإضافة أو التعديل أو الإزالة المؤقتة من نفس الشاشة">
           <div className="simple-settings-list">
             {localMessageTypes.map((item, index) => (
               <div key={`${item.value || 'new'}-${index}`} className="simple-settings-row">
@@ -157,7 +173,7 @@ export default function SettingsPage() {
                   className="secondary-btn danger-btn"
                   onClick={() => setLocalMessageTypes((prev) => prev.filter((_, rowIndex) => rowIndex !== index))}
                 >
-                  حذف
+                  حذف من القائمة
                 </button>
               </div>
             ))}
@@ -167,7 +183,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="المستويات الإدارية" subtitle="أضف أو عدّل المستويات الإدارية المستخدمة في النظام">
+        <Card title="المستويات الإدارية" subtitle="رتّب المسميات الإدارية التي يعتمد عليها النظام في الهيكل والصلاحيات">
           <div className="simple-settings-list">
             {localOrgTypes.map((item, index) => (
               <div key={item.id || index} className="simple-settings-row">
@@ -193,7 +209,7 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      <Card title="أنواع المهام" subtitle="أضف نوع المهمة، ويمكن تحديد وقت افتراضي أو تركه فارغًا">
+      <Card title="أنواع المهام" subtitle="أنواع المهام الأساسية مع وقت افتراضي اختياري واقتراح مراحل لاحقًا">
         <div className="simple-settings-list">
           {localTaskTypes.map((item, index) => (
             <div key={item.id || index} className="simple-task-row">

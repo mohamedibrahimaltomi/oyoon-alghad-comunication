@@ -38,7 +38,7 @@ export default function UsersPage() {
     setMessage('');
     try {
       await saveUserProfile(form);
-      setMessage(form.id ? 'تم حفظ المستخدم بنجاح.' : 'تم إنشاء المستخدم من داخل التطبيق بنجاح.');
+      setMessage(form.id ? 'تم حفظ المستخدم بنجاح.' : 'تم إنشاء المستخدم من داخل التطبيق بنجاح. يمكنه الآن تسجيل الدخول باسم المستخدم وكلمة المرور.');
       if (!form.id) setForm(emptyForm);
     } catch (err) {
       setMessage(err.message || 'تعذر حفظ المستخدم.');
@@ -50,8 +50,8 @@ export default function UsersPage() {
   return (
     <div className="page-stack">
       <div className="grid-2 responsive-stack">
-        <Card title="إدارة المستخدمين" subtitle="إنشاء المستخدم باسم مستخدم وكلمة مرور وربطه بجهته الإدارية">
-          <form className="form-grid" onSubmit={onSubmit}>
+        <Card title="إدارة المستخدمين" subtitle="الدخول يتم باسم المستخدم وكلمة المرور فقط، والبريد غير مطلوب في هذه الشاشة">
+          <div className="alert">مهم: الموظف العادي يرفع الطلبات إلى مديره المباشر، أما مدير الإدارة فيستطيع التحويل إلى الجهة المختصة.</div><form className="form-grid" onSubmit={onSubmit}>
             <label>الاسم الكامل<input value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required /></label>
             <label>اسم المستخدم<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.replace(/\s+/g,'') })} required /></label>
             <label>رقم الهاتف<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>

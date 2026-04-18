@@ -200,3 +200,67 @@ th { color: var(--muted); font-weight:600; }
 
 
 .install-btn{padding:10px 14px; min-height:42px;}
+
+
+select option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.settings-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.settings-summary-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+.settings-summary-card strong {
+  font-size: 1.4rem;
+  color: var(--primary);
+}
+.settings-summary-card span {
+  color: var(--muted);
+}
+.settings-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 10px 4px 6px;
+}
+.settings-section-subtitle {
+  color: var(--muted);
+  margin: 0 4px 16px;
+}
+.simple-settings-list, .simple-task-row {
+  gap: 10px;
+}
+.simple-settings-row, .simple-task-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.simple-task-row {
+  grid-template-columns: 1fr 220px auto;
+}
+.simple-input.small {
+  max-width: 220px;
+}
+@media (max-width: 768px) {
+  .settings-summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .simple-task-row,
+  .simple-settings-row {
+    grid-template-columns: 1fr;
+  }
+  .simple-input.small {
+    max-width: none;
+  }
+}

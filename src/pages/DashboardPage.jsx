@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import Card from '../components/Card';
 import StatCard from '../components/StatCard';
 import { useApp } from '../contexts/AppContext';
-import { formatDateTime, taskStatusLabel } from '../lib/helpers';
+import { formatDateTime, taskStatusLabel, roleLabel } from '../lib/helpers';
 
 export default function DashboardPage() {
   const { tasks, threads, notifications, orgUnits, users, currentUser, directManager } = useApp();
@@ -17,9 +17,11 @@ export default function DashboardPage() {
   const recentTasks = tasks.slice(0, 5);
   const latestNotifications = notifications.slice(0, 5);
   const role = currentUser?.role_key;
+  const dashboardTitle = role === 'employee' ? 'لوحة الموظف' : role === 'department_manager' ? 'لوحة رئيس الإدارة' : 'لوحة المدير العام';
 
   return (
     <div className="page-stack">
+      <Card title={dashboardTitle} subtitle={`تم تخصيص هذه الشاشة حسب الدور الحالي: ${roleLabel(role)}`} />
       <div className="stats-grid">{stats.map((item) => <StatCard key={item.title} title={item.title} value={item.value} />)}</div>
 
       {role === 'employee' ? (

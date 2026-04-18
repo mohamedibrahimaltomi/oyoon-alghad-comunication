@@ -56,8 +56,8 @@ export default function StructurePage() {
   return (
     <div className="page-stack">
       <div className="grid-2 responsive-stack">
-        <Card title="إعداد التسلسل الإداري" subtitle="أضف المستوى الإداري وسيعرض لك النظام فقط الجهة الأعلى المناسبة له">
-          <form className="form-grid" onSubmit={onSubmit}>
+        <Card title="إعداد التسلسل الإداري" subtitle="الإضافة هنا ذكية: عند اختيار المستوى سيعرض لك النظام الجهة الأعلى المناسبة فقط بدون خلط">
+          <div className="alert">مثال: عند إضافة قسم سيظهر لك اختيار الإدارات فقط، وعند إضافة قسم فرعي سيظهر لك اختيار الأقسام فقط.</div><form className="form-grid" onSubmit={onSubmit}>
             <label>{`${levelLabel || 'الجهة الإدارية'}: الاسم`}<input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required /></label>
             <label>نوع المستوى الإداري
               <select value={form.type_id} onChange={(e) => setForm({ ...form, type_id: e.target.value, parent_id: '' })} required>

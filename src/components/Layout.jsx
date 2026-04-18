@@ -55,7 +55,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="app-shell">
-      <button className="mobile-menu-btn icon-btn" onClick={() => setMobileMenuOpen(true)} title="فتح القائمة"><Menu size={18} /></button>
+      <button className="mobile-menu-btn icon-btn" onClick={() => setMobileMenuOpen(true)} title="فتح القائمة الجانبية"><Menu size={18} /></button>
       <aside className={`sidebar card ${mobileMenuOpen ? 'open' : ''}`}>
         <div>
           <div className="brand-row">

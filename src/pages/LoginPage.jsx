@@ -4,7 +4,7 @@ import { useApp } from '../contexts/AppContext';
 
 export default function LoginPage() {
   const { signIn, branding } = useApp();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -27,8 +27,8 @@ export default function LoginPage() {
         </div>
         <form className="form-grid" onSubmit={onSubmit}>
           <label>
-            البريد الإلكتروني
-            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            اسم المستخدم
+            <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
           </label>
           <label>
             كلمة المرور

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { buildOrgTree, defaultMessageTypes } from '../lib/helpers';
+import { buildOrgTree, defaultMessageTypes, getDescendantUnitIds, getParentUnit } from '../lib/helpers';
 
 const AppContext = createContext(null);
 
@@ -113,10 +113,10 @@ export function AppProvider({ children }) {
         messagesRes,
         notificationsRes
       ] = await Promise.all([
-        supabase.from('app_users').select('*, org_unit:org_units!app_users_org_unit_id_fkey(id,name_ar)').eq('id', userId).maybeSingle(),
+        supabase.from('app_users').select('*, org_unit:org_units!app_users_org_unit_id_fkey(*)').eq('id', userId).maybeSingle(),
         supabase.from('org_unit_types').select('*').order('created_at', { ascending: true }),
         supabase.from('org_units').select('*').order('sort_order', { ascending: true }),
-        supabase.from('app_users').select('*, org_unit:org_units!app_users_org_unit_id_fkey(id,name_ar)').order('created_at', { ascending: true }),
+        supabase.from('app_users').select('*, org_unit:org_units!app_users_org_unit_id_fkey(*)').order('created_at', { ascending: true }),
         supabase.from('task_types').select('*').order('created_at', { ascending: true }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         supabase.from('task_steps').select('*, responsible_org_unit:org_units!task_steps_responsible_org_unit_id_fkey(id,name_ar), assigned_user:app_users!task_steps_assigned_user_id_fkey(id,full_name_ar)').order('step_order', { ascending: true }),
@@ -134,7 +134,8 @@ export function AppProvider({ children }) {
         ...profileRes.data,
         name: profileRes.data.full_name_ar,
         role: profileRes.data.role_key,
-        orgUnitName: profileRes.data.org_unit?.name_ar || '—'
+        orgUnitName: profileRes.data.org_unit?.name_ar || '—',
+        parentOrgUnitId: profileRes.data.org_unit?.parent_id || null
       } : {
         id: userId,
         name: session?.user?.email || 'مستخدم',
@@ -234,8 +235,21 @@ export function AppProvider({ children }) {
     prevNotifIds.current = currentIds;
   }, [branding.enable_browser_notifications, notifications, tasks]);
 
-  const signIn = useCallback(async ({ email, password }) => {
+  const signIn = useCallback(async ({ username, password }) => {
     if (!supabase) return { error: new Error('Supabase غير مهيأ') };
+    const loginId = (username || '').trim();
+    if (!loginId) return { error: new Error('أدخل اسم المستخدم') };
+    let email = loginId;
+    if (!loginId.includes('@')) {
+      const { data: userRow, error: userErr } = await supabase
+        .from('app_users')
+        .select('email, username')
+        .eq('username', loginId)
+        .maybeSingle();
+      if (userErr) return { error: userErr };
+      if (!userRow?.email) return { error: new Error('اسم المستخدم غير موجود') };
+      email = userRow.email;
+    }
     return supabase.auth.signInWithPassword({ email, password });
   }, []);
 
@@ -409,7 +423,6 @@ export function AppProvider({ children }) {
     if (!supabase) throw new Error('Supabase غير مهيأ');
     if (!payload.id) {
       return createUserFromApp({
-        email: payload.email,
         password: payload.password,
         full_name: payload.full_name_ar,
         role_key: payload.role_key,
@@ -422,6 +435,7 @@ export function AppProvider({ children }) {
     }
     const payloadToSave = { ...payload };
     delete payloadToSave.password;
+    if (!payloadToSave.email) delete payloadToSave.email;
     const { data, error: saveError } = await supabase.from('app_users').update(payloadToSave).eq('id', payload.id).select().single();
     if (saveError) throw saveError;
     await fetchAll(session?.user?.id);
@@ -539,9 +553,13 @@ export function AppProvider({ children }) {
     }
 
     await fetchAll(session?.user?.id);
-  }, [createNotification, currentUser, fetchAll, session?.user?.id, users]);
+  }, [createNotification, currentUser, fetchAll, orgUnits, session?.user?.id, users]);
 
   const createThread = useCallback(async ({ thread, firstMessage }) => {
+    if (currentUser?.role_key === 'employee') {
+      const parentUnit = getParentUnit(orgUnits, currentUser.org_unit_id);
+      if (!parentUnit || thread.to_org_unit_id !== parentUnit.id) throw new Error('الموظف يرسل مراسلاته إلى مديره المباشر فقط');
+    }
     if (!supabase || !currentUser) throw new Error('لا يوجد مستخدم حالي');
     const { data: createdThread, error: threadError } = await supabase.from('message_threads').insert(thread).select().single();
     if (threadError) throw threadError;
@@ -558,7 +576,7 @@ export function AppProvider({ children }) {
       priority: thread.priority_key
     })));
     await fetchAll(session?.user?.id);
-  }, [createNotification, currentUser, fetchAll, session?.user?.id, users]);
+  }, [createNotification, currentUser, fetchAll, orgUnits, session?.user?.id, users]);
 
   const replyToThread = useCallback(async ({ threadId, body }) => {
     if (!supabase || !currentUser) throw new Error('لا يوجد مستخدم حالي');
@@ -636,6 +654,41 @@ export function AppProvider({ children }) {
     return Notification.requestPermission();
   }, []);
 
+
+  const descendantUnitIds = useMemo(() => getDescendantUnitIds(orgUnits, currentUser?.org_unit_id), [orgUnits, currentUser?.org_unit_id]);
+  const directManager = useMemo(() => {
+    if (!currentUser?.org_unit_id) return null;
+    const parentUnit = getParentUnit(orgUnits, currentUser.org_unit_id);
+    if (!parentUnit) return users.find((u) => u.org_unit_id === currentUser.org_unit_id && u.role_key === 'department_manager') || null;
+    return users.find((u) => u.org_unit_id === parentUnit.id && u.role_key === 'department_manager') || null;
+  }, [currentUser?.org_unit_id, orgUnits, users]);
+  const visibleTasks = useMemo(() => {
+    if (!currentUser) return tasks;
+    if (['general_manager','system_admin'].includes(currentUser.role_key)) return tasks;
+    if (currentUser.role_key === 'department_manager') {
+      return tasks.filter((task) => descendantUnitIds.includes(task.created_from_org_unit_id) || descendantUnitIds.includes(task.current_org_unit_id));
+    }
+    return tasks.filter((task) => task.current_assigned_user_id === currentUser.id || task.created_by === currentUser.id || (task.steps || []).some((step) => step.assigned_user_id === currentUser.id));
+  }, [currentUser, tasks, descendantUnitIds]);
+  const visibleThreads = useMemo(() => {
+    if (!currentUser) return threads;
+    if (['general_manager','system_admin'].includes(currentUser.role_key)) return threads;
+    if (currentUser.role_key === 'department_manager') {
+      return threads.filter((thread) => descendantUnitIds.includes(thread.from_org_unit_id) || descendantUnitIds.includes(thread.to_org_unit_id));
+    }
+    return threads.filter((thread) => thread.created_by === currentUser.id || thread.from_org_unit_id === currentUser.org_unit_id || thread.to_org_unit_id === currentUser.org_unit_id);
+  }, [currentUser, threads, descendantUnitIds]);
+  const allowedMessageTargets = useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.role_key === 'employee') {
+      const parentUnit = getParentUnit(orgUnits, currentUser.org_unit_id);
+      return parentUnit ? [parentUnit] : [];
+    }
+    if (currentUser.role_key === 'department_manager') {
+      return orgUnits.filter((unit) => unit.id !== currentUser.org_unit_id && !descendantUnitIds.includes(unit.id));
+    }
+    return orgUnits.filter((unit) => unit.id !== currentUser.org_unit_id);
+  }, [currentUser, orgUnits, descendantUnitIds]);
   const manualBackupExport = useCallback(async () => {
     const payload = {
       exported_at: new Date().toISOString(),
@@ -669,8 +722,8 @@ export function AppProvider({ children }) {
     users,
     taskTypes,
     taskTemplates,
-    tasks,
-    threads,
+    tasks: visibleTasks,
+    threads: visibleThreads,
     notifications,
     branding,
     messageTypes,
@@ -693,8 +746,10 @@ export function AppProvider({ children }) {
     saveBranding,
     requestBrowserNotifications,
     manualBackupExport,
-    createUserFromApp
-  }), [advanceTaskStep, branding, createThread, currentUser, error, fetchAll, loading, manualBackupExport, markNotificationRead, messageTypes, notifications, orgUnitTypes, orgUnits, replyToThread, saveBranding, saveMessageTypes, saveOrgUnit, saveOrgUnitType, deleteOrgUnitType, saveTask, saveTaskTemplate, saveTaskType, deleteTaskType, saveUserProfile, session, signIn, signOut, taskTemplates, taskTypes, tasks, threads, users, requestBrowserNotifications, createUserFromApp]);
+    createUserFromApp,
+    directManager,
+    allowedMessageTargets
+  }), [advanceTaskStep, allowedMessageTargets, branding, createThread, currentUser, directManager, error, fetchAll, loading, manualBackupExport, markNotificationRead, messageTypes, notifications, orgUnitTypes, orgUnits, replyToThread, saveBranding, saveMessageTypes, saveOrgUnit, saveOrgUnitType, deleteOrgUnitType, saveTask, saveTaskTemplate, saveTaskType, deleteTaskType, saveUserProfile, session, signIn, signOut, taskTemplates, taskTypes, visibleTasks, visibleThreads, users, requestBrowserNotifications, createUserFromApp]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

@@ -1,22 +1,27 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Card from '../components/Card';
 import { useApp } from '../contexts/AppContext';
-import { ROLE_OPTIONS, roleLabel } from '../lib/helpers';
+import { ROLE_OPTIONS, roleLabel, getAllowedParentUnits, normalizeHierarchyType } from '../lib/helpers';
 
-const emptyForm = { id: '', full_name_ar: '', username: '', email: '', phone: '', password: '', role_key: 'employee', org_unit_id: '', job_title_ar: '', is_active: true };
+const emptyForm = { id: '', full_name_ar: '', username: '', phone: '', password: '', role_key: 'employee', org_unit_id: '', job_title_ar: '', is_active: true };
 
 export default function UsersPage() {
-  const { users, orgUnits, saveUserProfile } = useApp();
+  const { users, orgUnits, orgUnitTypes, saveUserProfile, currentUser } = useApp();
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const visibleUnits = useMemo(() => {
+    if (['general_manager','system_admin'].includes(currentUser?.role_key)) return orgUnits;
+    if (currentUser?.role_key === 'department_manager') return orgUnits.filter((unit) => unit.parent_id === currentUser.org_unit_id || unit.id === currentUser.org_unit_id);
+    return orgUnits.filter((unit) => unit.id === currentUser?.org_unit_id);
+  }, [orgUnits, currentUser]);
 
   const onEdit = (user) => {
     setForm({
       id: user.id,
       full_name_ar: user.full_name_ar,
       username: user.username || '',
-      email: user.email || '',
       phone: user.phone || '',
       password: '',
       role_key: user.role_key,
@@ -45,13 +50,12 @@ export default function UsersPage() {
   return (
     <div className="page-stack">
       <div className="grid-2 responsive-stack">
-        <Card title="إدارة المستخدمين" subtitle="إضافة مستخدم جديد أو تعديل المستخدمين الحاليين من داخل النظام">
+        <Card title="إدارة المستخدمين" subtitle="إنشاء المستخدم باسم مستخدم وكلمة مرور وربطه بجهته الإدارية">
           <form className="form-grid" onSubmit={onSubmit}>
             <label>الاسم الكامل<input value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required /></label>
-            <label>اسم المستخدم<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></label>
-            <label>البريد الإلكتروني<input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required={!form.id} /></label>
+            <label>اسم المستخدم<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.replace(/\s+/g,'') })} required /></label>
             <label>رقم الهاتف<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-            {!form.id ? <label>كلمة المرور<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!form.id} /></label> : null}
+            {!form.id ? <label>كلمة المرور<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></label> : null}
             <label>الدور
               <select value={form.role_key} onChange={(e) => setForm({ ...form, role_key: e.target.value })}>
                 {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -59,8 +63,8 @@ export default function UsersPage() {
             </label>
             <label>الجهة الإدارية التابعة
               <select value={form.org_unit_id} onChange={(e) => setForm({ ...form, org_unit_id: e.target.value })}>
-                <option value="">اختر الإدارة أو القسم</option>
-                {orgUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar}</option>)}
+                <option value="">اختر الجهة</option>
+                {visibleUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar}</option>)}
               </select>
             </label>
             <label>المسمى الوظيفي<input value={form.job_title_ar} onChange={(e) => setForm({ ...form, job_title_ar: e.target.value })} /></label>
@@ -77,18 +81,13 @@ export default function UsersPage() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>الاسم</th>
-                  <th>الدور</th>
-                  <th>الجهة</th>
-                  <th>الحالة</th>
-                  <th>إجراء</th>
-                </tr>
+                <tr><th>الاسم</th><th>اسم المستخدم</th><th>الدور</th><th>الجهة</th><th>الحالة</th><th>إجراء</th></tr>
               </thead>
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id}>
                     <td>{user.full_name_ar}</td>
+                    <td>{user.username || '—'}</td>
                     <td>{roleLabel(user.role_key)}</td>
                     <td>{user.org_unit?.name_ar || '—'}</td>
                     <td>{user.is_active ? 'نشط' : 'موقوف'}</td>

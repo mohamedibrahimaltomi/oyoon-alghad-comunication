@@ -7,13 +7,13 @@ import { useApp } from '../contexts/AppContext';
 import { formatDateTime, roleLabel } from '../lib/helpers';
 
 const links = [
-  { to: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
-  { to: '/tasks', label: 'المهام', icon: ClipboardList },
-  { to: '/messages', label: 'المراسلات', icon: Mail },
-  { to: '/structure', label: 'الهيكل الإداري', icon: Building2 },
-  { to: '/users', label: 'المستخدمون', icon: Users },
-  { to: '/backups', label: 'النسخ الاحتياطية', icon: DatabaseBackup },
-  { to: '/settings', label: 'الإعدادات', icon: Settings }
+  { to: '/', label: 'لوحة التحكم', icon: LayoutDashboard, roles: ['general_manager','department_manager','employee','system_admin'] },
+  { to: '/tasks', label: 'المهام', icon: ClipboardList, roles: ['general_manager','department_manager','employee','system_admin'] },
+  { to: '/messages', label: 'المراسلات', icon: Mail, roles: ['general_manager','department_manager','employee','system_admin'] },
+  { to: '/structure', label: 'الهيكل الإداري', icon: Building2, roles: ['general_manager','department_manager','system_admin'] },
+  { to: '/users', label: 'المستخدمون', icon: Users, roles: ['general_manager','department_manager','system_admin'] },
+  { to: '/backups', label: 'النسخ الاحتياطية', icon: DatabaseBackup, roles: ['general_manager','system_admin'] },
+  { to: '/settings', label: 'الإعدادات', icon: Settings, roles: ['general_manager','department_manager','system_admin'] }
 ];
 
 export default function Layout({ children }) {
@@ -31,6 +31,7 @@ export default function Layout({ children }) {
   }, []);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.is_read).length, [notifications]);
+  const visibleLinks = useMemo(() => links.filter((item) => item.roles.includes(currentUser?.role_key || 'employee')), [currentUser?.role_key]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -68,7 +69,7 @@ export default function Layout({ children }) {
             <button className="mobile-close-btn icon-btn" onClick={() => setMobileMenuOpen(false)}><X size={18} /></button>
           </div>
           <nav className="nav-list">
-            {links.map(({ to, label, icon: Icon }) => (
+            {visibleLinks.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                 <Icon size={18} />
                 <span>{label}</span>

@@ -1,18 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import Card from '../components/Card';
 import { useApp } from '../contexts/AppContext';
-import { flattenUnits } from '../lib/helpers';
+import { flattenUnits, getAllowedParentUnits } from '../lib/helpers';
 
 const emptyForm = {
-  id: '',
-  name_ar: '',
-  type_id: '',
-  parent_id: '',
-  description_ar: '',
-  receives_tasks: true,
-  receives_messages: true,
-  is_active: true,
-  sort_order: 0
+  id: '', name_ar: '', type_id: '', parent_id: '', description_ar: '',
+  receives_tasks: true, receives_messages: true, is_active: true, sort_order: 0
 };
 
 export default function StructurePage() {
@@ -21,54 +14,46 @@ export default function StructurePage() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const options = useMemo(() => flattenUnits(orgTree), [orgTree]);
+  const allowedParents = useMemo(() => getAllowedParentUnits(orgUnits, orgUnitTypes, form.type_id), [orgUnits, orgUnitTypes, form.type_id]);
+  const options = useMemo(() => flattenUnits(allowedParents.map((unit) => ({...unit, children: []}))), [allowedParents]);
 
   const onEdit = (unit) => {
     setForm({
-      id: unit.id,
-      name_ar: unit.name_ar,
-      type_id: unit.type_id || '',
-      parent_id: unit.parent_id || '',
-      description_ar: unit.description_ar || '',
-      receives_tasks: unit.receives_tasks,
-      receives_messages: unit.receives_messages,
-      is_active: unit.is_active,
-      sort_order: unit.sort_order || 0
+      id: unit.id, name_ar: unit.name_ar, type_id: unit.type_id || '', parent_id: unit.parent_id || '',
+      description_ar: unit.description_ar || '', receives_tasks: unit.receives_tasks,
+      receives_messages: unit.receives_messages, is_active: unit.is_active, sort_order: unit.sort_order || 0
     });
     setMessage('يمكنك تعديل الجهة الإدارية الحالية ثم حفظها.');
   };
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    setBusy(true);
-    setMessage('');
+    setBusy(true); setMessage('');
     try {
       await saveOrgUnit(form);
       setMessage('تم حفظ الجهة الإدارية بنجاح.');
       setForm(emptyForm);
     } catch (err) {
       setMessage(err.message || 'تعذر حفظ الجهة الإدارية.');
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   return (
     <div className="page-stack">
       <div className="grid-2 responsive-stack">
-        <Card title="إعداد التسلسل الإداري" subtitle="حدد الإدارة أو القسم وحدد الجهة الأعلى منه ليفهم النظام التبعية داخليًا">
+        <Card title="إعداد التسلسل الإداري" subtitle="الإدارة تضاف تحت الإدارة العليا، والقسم تحت الإدارة، والقسم الفرعي تحت القسم وهكذا">
           <form className="form-grid" onSubmit={onSubmit}>
             <label>اسم الإدارة / القسم<input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required /></label>
             <label>المستوى الإداري
-              <select value={form.type_id} onChange={(e) => setForm({ ...form, type_id: e.target.value })} required>
+              <select value={form.type_id} onChange={(e) => setForm({ ...form, type_id: e.target.value, parent_id: '' })} required>
                 <option value="">اختر المستوى</option>
                 {orgUnitTypes.map((type) => <option key={type.id} value={type.id}>{type.name_ar}</option>)}
               </select>
             </label>
-            <label>يتبع إلى
-              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })}>
-                <option value="">مستوى أعلى / مستقل</option>
-                {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+            <label>الجهة الأعلى منه
+              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })} disabled={!form.type_id || allowedParents.length === 0}>
+                <option value="">{allowedParents.length ? 'اختر الجهة الأعلى' : 'لا يوجد اختيار أعلى لهذا المستوى'}</option>
+                {allowedParents.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar}</option>)}
               </select>
             </label>
             <label>الترتيب<input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} /></label>
@@ -86,30 +71,17 @@ export default function StructurePage() {
           </form>
         </Card>
 
-        <Card title="الترتيب الإداري الحالي" subtitle={`عدد الجهات الحالية: ${orgUnits.length}`}>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>الجهة</th>
-                  <th>المستوى</th>
-                  <th>يتبع إلى</th>
-                  <th>الحالة</th>
-                  <th>إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orgUnits.map((unit) => (
-                  <tr key={unit.id}>
-                    <td>{unit.name_ar}</td>
-                    <td>{orgUnitTypes.find((type) => type.id === unit.type_id)?.name_ar || '—'}</td>
-                    <td>{orgUnits.find((parent) => parent.id === unit.parent_id)?.name_ar || '—'}</td>
-                    <td>{unit.is_active ? 'نشط' : 'موقوف'}</td>
-                    <td><button className="secondary-btn" onClick={() => onEdit(unit)}>تعديل</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <Card title="الهيكل الحالي" subtitle="عرض الجهات الإدارية الحالية">
+          <div className="list-stack">
+            {orgUnits.map((unit) => (
+              <div key={unit.id} className="list-row">
+                <div>
+                  <strong>{unit.name_ar}</strong>
+                  <p>{orgUnitTypes.find((type) => type.id === unit.type_id)?.name_ar || 'مستوى غير محدد'} — الأعلى: {orgUnits.find((parent) => parent.id === unit.parent_id)?.name_ar || 'الإدارة العليا'}</p>
+                </div>
+                <button className="secondary-btn" onClick={() => onEdit(unit)}>تعديل</button>
+              </div>
+            ))}
           </div>
         </Card>
       </div>

@@ -30,8 +30,25 @@ export default function TasksPage() {
         steps: template.map((step) => ({ ...emptyStep, ...step }))
       }));
       setMessage('تم اقتراح المراحل تلقائيًا حسب نوع المهمة المختار.');
+      return;
     }
-  }, [form.task_type_id, taskTemplates]);
+    const latestTask = tasks.find((task) => task.task_type_id === form.task_type_id && task.steps?.length);
+    if (latestTask?.steps?.length) {
+      setForm((prev) => ({
+        ...prev,
+        steps: latestTask.steps.map((step) => ({
+          ...emptyStep,
+          step_name_ar: step.step_name_ar,
+          responsible_org_unit_id: step.responsible_org_unit_id,
+          assigned_user_id: step.assigned_user_id || '',
+          sla_hours: step.sla_hours ?? null,
+          requires_proof: !!step.requires_proof,
+          requires_approval: !!step.requires_approval
+        }))
+      }));
+      setMessage('تم اقتراح المراحل تلقائيًا من آخر مهمة مشابهة لهذا النوع.');
+    }
+  }, [form.task_type_id, taskTemplates, tasks]);
 
   const onStepChange = (index, key, value) => {
     setForm((prev) => ({
@@ -60,7 +77,7 @@ export default function TasksPage() {
         status_key: 'new',
         priority_key: form.priority_key,
         overall_progress: 0,
-        sla_hours: taskType?.default_sla_hours || 2,
+        sla_hours: taskType?.default_sla_hours ?? null,
         due_at: form.due_at || null,
         requires_proof: form.requires_proof,
         requires_approval: form.requires_approval
@@ -126,7 +143,7 @@ export default function TasksPage() {
                       {groupedUsers.filter((user) => !step.responsible_org_unit_id || user.org_unit_id === step.responsible_org_unit_id).map((user) => <option key={user.id} value={user.id}>{user.full_name_ar}</option>)}
                     </select>
                   </label>
-                  <label>زمن التنفيذ بالساعات<input type="number" min="1" value={step.sla_hours} onChange={(e) => onStepChange(index, 'sla_hours', Number(e.target.value))} /></label>
+                  <label>زمن التنفيذ بالساعات (اختياري)<input type="number" min="1" placeholder="بدون وقت" value={step.sla_hours ?? ''} onChange={(e) => onStepChange(index, 'sla_hours', e.target.value === '' ? null : Number(e.target.value))} /></label>
                 </div>
               </div>
             ))}

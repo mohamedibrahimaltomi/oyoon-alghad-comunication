@@ -101,11 +101,11 @@ export function fileToDataUrl(file) {
 }
 
 export function normalizeHierarchyType(type) {
-  const value = `${type?.code || ''} ${type?.name_ar || ''}`.toLowerCase();
-  if (value.includes('عليا') || value.includes('executive') || value.includes('general')) return 'top';
-  if (value.includes('ادارة') || value.includes('إدارة') || value.includes('management')) return 'department';
-  if (value.includes('فرعي')) return 'subsection';
-  if (value.includes('قسم') || value.includes('section')) return 'section';
+  const value = `${type?.code || ''} ${type?.name_ar || ''}`.toLowerCase().trim();
+  if (value.includes('المدير') || value.includes('التنفيذي') || value.includes('العليا') || value.includes('general') || value.includes('executive') || value.includes('top')) return 'top';
+  if (value.includes('ادارة') || value.includes('إدارة') || value.includes('management') || value.includes('department')) return 'department';
+  if (value.includes('قسم فرعي') || value.includes('فرعي') || value.includes('subsection') || value.includes('sub-section')) return 'subsection';
+  if ((value.includes('قسم') && !value.includes('فرعي')) || value.includes('section')) return 'section';
   if (value.includes('قطاع') || value.includes('sector')) return 'sector';
   if (value.includes('خط') || value.includes('line')) return 'line';
   return 'other';
@@ -149,4 +149,28 @@ export function getParentUnit(orgUnits, unitId) {
   const unit = orgUnits.find((item) => item.id === unitId);
   if (!unit?.parent_id) return null;
   return orgUnits.find((item) => item.id === unit.parent_id) || null;
+}
+
+
+export function hierarchyLabel(type, fallback = 'جهة إدارية') {
+  const key = normalizeHierarchyType(type);
+  const labels = {
+    top: 'الإدارة العليا',
+    department: 'إدارة',
+    section: 'قسم',
+    subsection: 'قسم فرعي',
+    sector: 'قطاع',
+    line: 'خط',
+    other: fallback
+  };
+  return labels[key] || fallback;
+}
+
+export function sortUnitsByHierarchy(units, orgUnitTypes) {
+  const order = { top: 1, department: 2, section: 3, subsection: 4, sector: 5, line: 6, other: 99 };
+  return [...units].sort((a,b) => {
+    const ak = normalizeHierarchyType(orgUnitTypes.find((t) => t.id === a.type_id));
+    const bk = normalizeHierarchyType(orgUnitTypes.find((t) => t.id === b.type_id));
+    return (order[ak] || 99) - (order[bk] || 99) || (a.sort_order || 0) - (b.sort_order || 0) || (a.name_ar || '').localeCompare(b.name_ar || '', 'ar');
+  });
 }

@@ -142,7 +142,7 @@ export default function SettingsPage() {
       </Card>
 
       <div className="grid-2 responsive-stack">
-        <Card title="أنواع المراسلات" subtitle={`عدد الأنواع الحالية: ${activeMessageTypes.length}`}>
+        <Card title="أنواع المراسلات" subtitle="أضف أو عدّل أنواع المراسلات بسهولة">
           <div className="simple-settings-list">
             {localMessageTypes.map((item, index) => (
               <div key={`${item.value || 'new'}-${index}`} className="simple-settings-row">
@@ -167,7 +167,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="المستويات الإدارية" subtitle="أضف أو عدّل المستويات التي يستخدمها الهيكل الإداري">
+        <Card title="المستويات الإدارية" subtitle="أضف أو عدّل المستويات الإدارية المستخدمة في النظام">
           <div className="simple-settings-list">
             {localOrgTypes.map((item, index) => (
               <div key={item.id || index} className="simple-settings-row">
@@ -193,7 +193,7 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      <Card title="أنواع المهام" subtitle="أضف نوع المهمة وحدد وقتًا افتراضيًا إن رغبت، ويمكن تركه فارغًا">
+      <Card title="أنواع المهام" subtitle="أضف نوع المهمة، ويمكن تحديد وقت افتراضي أو تركه فارغًا">
         <div className="simple-settings-list">
           {localTaskTypes.map((item, index) => (
             <div key={item.id || index} className="simple-task-row">
@@ -223,7 +223,7 @@ export default function SettingsPage() {
         </div>
         <div className="button-row top-gap">
           <button className="secondary-btn" onClick={() => setLocalTaskTypes((prev) => [...prev, { code: `task_${Date.now()}`, name_ar: 'نوع مهمة جديد', default_sla_hours: null, is_active: true }])}>إضافة نوع مهمة</button>
-          <button className="primary-btn" onClick={saveReferenceData} disabled={busy}>{busy ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}</button>
+          <button className="primary-btn" onClick={saveReferenceData} disabled={busy}>{busy ? 'جارٍ الحفظ...' : 'حفظ الأنواع والمستويات'}</button>
         </div>
       </Card>
     </div>

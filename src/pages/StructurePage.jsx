@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import Card from '../components/Card';
 import { useApp } from '../contexts/AppContext';
-import { flattenUnits, getAllowedParentUnits } from '../lib/helpers';
+import { getAllowedParentUnits, hierarchyLabel, normalizeHierarchyType, sortUnitsByHierarchy } from '../lib/helpers';
 
 const emptyForm = {
   id: '', name_ar: '', type_id: '', parent_id: '', description_ar: '',
@@ -14,8 +14,23 @@ export default function StructurePage() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const allowedParents = useMemo(() => getAllowedParentUnits(orgUnits, orgUnitTypes, form.type_id), [orgUnits, orgUnitTypes, form.type_id]);
-  const options = useMemo(() => flattenUnits(allowedParents.map((unit) => ({...unit, children: []}))), [allowedParents]);
+  const selectedType = useMemo(() => orgUnitTypes.find((type) => type.id === form.type_id), [orgUnitTypes, form.type_id]);
+  const selectedHierarchy = useMemo(() => normalizeHierarchyType(selectedType), [selectedType]);
+  const allowedParents = useMemo(() => sortUnitsByHierarchy(getAllowedParentUnits(orgUnits, orgUnitTypes, form.type_id), orgUnitTypes), [orgUnits, orgUnitTypes, form.type_id]);
+  const levelLabel = useMemo(() => hierarchyLabel(selectedType, 'الجهة الإدارية'), [selectedType]);
+  const parentLabel = useMemo(() => {
+    const map = {
+      top: 'لا يوجد مستوى أعلى لهذا النوع',
+      department: 'اختر الإدارة العليا',
+      section: 'اختر الإدارة التابعة',
+      subsection: 'اختر القسم الأعلى',
+      sector: 'اختر القسم أو القسم الفرعي الأعلى',
+      line: 'اختر القطاع الأعلى',
+      other: 'اختر الجهة الأعلى'
+    };
+    return map[selectedHierarchy] || map.other;
+  }, [selectedHierarchy]);
+  const orderedUnits = useMemo(() => sortUnitsByHierarchy(orgUnits, orgUnitTypes), [orgUnits, orgUnitTypes]);
 
   const onEdit = (unit) => {
     setForm({
@@ -41,19 +56,19 @@ export default function StructurePage() {
   return (
     <div className="page-stack">
       <div className="grid-2 responsive-stack">
-        <Card title="إعداد التسلسل الإداري" subtitle="الإدارة تضاف تحت الإدارة العليا، والقسم تحت الإدارة، والقسم الفرعي تحت القسم وهكذا">
+        <Card title="إعداد التسلسل الإداري" subtitle="أضف المستوى الإداري وسيعرض لك النظام فقط الجهة الأعلى المناسبة له">
           <form className="form-grid" onSubmit={onSubmit}>
-            <label>اسم الإدارة / القسم<input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required /></label>
-            <label>المستوى الإداري
+            <label>{`${levelLabel || 'الجهة الإدارية'}: الاسم`}<input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required /></label>
+            <label>نوع المستوى الإداري
               <select value={form.type_id} onChange={(e) => setForm({ ...form, type_id: e.target.value, parent_id: '' })} required>
                 <option value="">اختر المستوى</option>
                 {orgUnitTypes.map((type) => <option key={type.id} value={type.id}>{type.name_ar}</option>)}
               </select>
             </label>
-            <label>الجهة الأعلى منه
+            <label>{parentLabel}
               <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })} disabled={!form.type_id || allowedParents.length === 0}>
-                <option value="">{allowedParents.length ? 'اختر الجهة الأعلى' : 'لا يوجد اختيار أعلى لهذا المستوى'}</option>
-                {allowedParents.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar}</option>)}
+                <option value="">{allowedParents.length ? parentLabel : 'لا يوجد اختيار أعلى لهذا المستوى'}</option>
+                {allowedParents.map((unit) => <option key={unit.id} value={unit.id}>{unit.name_ar} — {hierarchyLabel(orgUnitTypes.find((type) => type.id === unit.type_id), 'جهة')}</option>)}
               </select>
             </label>
             <label>الترتيب<input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} /></label>
@@ -73,11 +88,11 @@ export default function StructurePage() {
 
         <Card title="الهيكل الحالي" subtitle="عرض الجهات الإدارية الحالية">
           <div className="list-stack">
-            {orgUnits.map((unit) => (
+            {orderedUnits.map((unit) => (
               <div key={unit.id} className="list-row">
                 <div>
                   <strong>{unit.name_ar}</strong>
-                  <p>{orgUnitTypes.find((type) => type.id === unit.type_id)?.name_ar || 'مستوى غير محدد'} — الأعلى: {orgUnits.find((parent) => parent.id === unit.parent_id)?.name_ar || 'الإدارة العليا'}</p>
+                  <p>{hierarchyLabel(orgUnitTypes.find((type) => type.id === unit.type_id), 'مستوى غير محدد')} — الأعلى: {orgUnits.find((parent) => parent.id === unit.parent_id)?.name_ar || 'الإدارة العليا'}</p>
                 </div>
                 <button className="secondary-btn" onClick={() => onEdit(unit)}>تعديل</button>
               </div>
